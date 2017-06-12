@@ -11,6 +11,16 @@ PRUNE=0
 NO_HEAD=0
 NORMALIZE_SOLIDUS=0
 
+if [ -n "$BASH_SOURCE" ]; then
+is_bash() {
+  return 0
+}
+else
+is_bash() {
+  return 1
+}
+fi
+
 usage() {
   echo
   echo "Usage: JSON.sh [-b] [-l] [-p] [-s] [-h]"
@@ -102,6 +112,49 @@ tokenize () {
   if [ $is_wordsplit_disabled != 0 ]; then unsetopt shwordsplit; fi
 }
 
+if is_bash; then
+  read -r -d '' <<'EOF'
+set +o posix
+tokenize_bash() {
+
+  local ESCAPE='(\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})'
+  local CHAR='[^[:cntrl:]\"\\]'
+  local STRING="\"$CHAR*($ESCAPE$CHAR*)*\""
+  local NUMBER='-?(0|[1-9][0-9]*)([.][0-9]*)?([eE][+-]?[0-9]*)?'
+  local KEYWORD='null|false|true'
+  local SPACE='[[:space:]]+'
+  local EXPRESSION="($STRING|$NUMBER|$KEYWORD|$SPACE|.)"
+  local IFS=''
+  local buffer=''
+
+  while read -r line || [[ -n "${line}" ]]; do
+   IFS=$'\n'
+   buffer+="${line}"
+   while [[ "${buffer}" =~ $EXPRESSION ]]; do
+     local match
+     local -i match_count=0
+     for match in "${BASH_REMATCH[@]:1}"; do
+       local match_length="${#match}"
+       if [[ $match_length -gt 0 && "${match}" == "${buffer:0:$match_length}" ]]; then
+         buffer="${buffer:$match_length}"
+         match_count=++match_count
+         if [[ ! "${match}" =~ ^$SPACE$  ]]; then
+           echo "$match"
+         fi
+       fi
+     done
+     IFS=''
+     if ((match_count == 0)); then
+       break;
+     fi
+   done
+  done
+  return 0
+}
+EOF
+  eval "${REPLY}"
+fi
+
 parse_array () {
   local index=0
   local ary=''
@@ -172,7 +225,11 @@ parse_value () {
     ''|[!0-9]) throw "EXPECTED value GOT ${token:-EOF}" ;;
     *) value=$token
        # if asked, replace solidus ("\/") in json strings with normalized value: "/"
-       [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value=$(echo "$value" | sed 's#\\/#/#g')
+       if is_bash; then
+         [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value="${value//\\\///}"
+       else
+         [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value=$(echo "$value" | sed 's#\\/#/#g')
+       fi
        isleaf=1
        [ "$value" = '""' ] && isempty=1
        ;;
@@ -199,10 +256,14 @@ parse () {
   esac
 }
 
-if ([ "$0" = "$BASH_SOURCE" ] || ! [ -n "$BASH_SOURCE" ]);
+if ([ "$0" = "$BASH_SOURCE" ] || ! is_bash);
 then
   parse_options "$@"
-  tokenize | parse
+  if is_bash; then
+    tokenize_bash | parse
+  else
+    tokenize | parse
+  fi
 fi
 
 # vi: expandtab sw=2 ts=2
