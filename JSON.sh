@@ -107,9 +107,9 @@ tokenize () {
 
   # Force zsh to expand $A into multiple words
   local is_wordsplit_disabled=$(unsetopt 2>/dev/null | grep -c '^shwordsplit$')
-  if [ $is_wordsplit_disabled != 0 ]; then setopt shwordsplit; fi
+  if [ "$is_wordsplit_disabled" != 0 ]; then setopt shwordsplit; fi
   $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
-  if [ $is_wordsplit_disabled != 0 ]; then unsetopt shwordsplit; fi
+  if [ "$is_wordsplit_disabled" != 0 ]; then unsetopt shwordsplit; fi
 }
 
 if is_bash; then
@@ -238,10 +238,10 @@ parse_value () {
   [ "$NO_HEAD" -eq 1 ] && [ -z "$jpath" ] && return
 
   [ "$LEAFONLY" -eq 0 ] && [ "$PRUNE" -eq 0 ] && print=1
-  [ "$LEAFONLY" -eq 1 ] && [ "$isleaf" -eq 1 ] && [ $PRUNE -eq 0 ] && print=1
+  [ "$LEAFONLY" -eq 1 ] && [ "$isleaf" -eq 1 ] && [ "$PRUNE" -eq 0 ] && print=1
   [ "$LEAFONLY" -eq 0 ] && [ "$PRUNE" -eq 1 ] && [ "$isempty" -eq 0 ] && print=1
   [ "$LEAFONLY" -eq 1 ] && [ "$isleaf" -eq 1 ] && \
-    [ $PRUNE -eq 1 ] && [ $isempty -eq 0 ] && print=1
+    [ "$PRUNE" -eq 1 ] && [ "$isempty" -eq 0 ] && print=1
   [ "$print" -eq 1 ] && printf "[%s]\t%s\n" "$jpath" "$value"
   :
 }
