@@ -237,8 +237,8 @@ parse_value () {
     *) value=$token
        # if asked, replace solidus ("\/") in json strings with normalized value: "/"
        if is_bash; then
-		   # Bashisms allowed, we're running under bash
-		   # shellcheck disable=2039
+       # Bashisms allowed, we're running under bash
+       # shellcheck disable=2039
          [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value="${value//\\\///}"
        else
          [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value=$(echo "$value" | sed 's#\\/#/#g')
