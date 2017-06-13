@@ -121,7 +121,8 @@ tokenize () {
 # We know we're running in bash, and nothing below causes syntax errors in zsh or dash
 # shellcheck disable=2039
 if is_bash; then
-  read -r -d '' <<'EOF'
+
+# Turn posix mode off to enter 'full' bash mode
 set +o posix
 tokenize_bash() {
 
@@ -163,8 +164,6 @@ tokenize_bash() {
   done
   return 0
 }
-EOF
-  eval "${REPLY}"
 fi
 
 parse_array () {
