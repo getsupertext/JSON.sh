@@ -10,8 +10,10 @@ LEAFONLY=0
 PRUNE=0
 NO_HEAD=0
 NORMALIZE_SOLIDUS=0
-
+SEPARATOR="${SEPARATOR-,}"
+SPACER="${SPACER-\\t}"
 if [ -n "$BASH_SOURCE" ]; then
+BARE_STRINGS="${BARE_STRINGS-0}"
 is_bash() {
   return 0
 }
@@ -125,7 +127,7 @@ tokenize_bash() {
 
   local ESCAPE='(\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})'
   local CHAR='[^[:cntrl:]\"\\]'
-  local STRING="\"$CHAR*($ESCAPE$CHAR*)*\""
+  local STRING="\"($CHAR*($ESCAPE$CHAR*)*)\""
   local NUMBER='-?(0|[1-9][0-9]*)([.][0-9]*)?([eE][+-]?[0-9]*)?'
   local KEYWORD='null|false|true'
   local SPACE='[[:space:]]+'
@@ -139,12 +141,16 @@ tokenize_bash() {
    while [[ "${buffer}" =~ $EXPRESSION ]]; do
      local match
      local -i match_count=0
+     local alt_match="${BASH_REMATCH[2]}"
      for match in "${BASH_REMATCH[@]:1}"; do
        local match_length="${#match}"
        if [[ $match_length -gt 0 && "${match}" == "${buffer:0:$match_length}" ]]; then
          buffer="${buffer:$match_length}"
          match_count=++match_count
          if [[ ! "${match}" =~ ^$SPACE$  ]]; then
+           if [[ "${BARE_STRINGS}" == 1 && "${match:0:1}" == '"' && "${match:(-1)}" == '"' ]];then
+             match="${alt_match}"
+           fi
            echo "$match"
          fi
        fi
@@ -198,7 +204,7 @@ parse_object () {
       do
         case "$token" in
           '"'*'"') key=$token ;;
-          *) throw "EXPECTED string GOT ${token:-EOF}" ;;
+          *) key=$token;[ "$BARE_STRINGS" = 1 ] || throw "EXPECTED string GOT ${token:-EOF}" ;;
         esac
         read -r token
         case "$token" in
@@ -223,7 +229,7 @@ parse_object () {
 }
 
 parse_value () {
-  local jpath="${1:+$1,}$2" isleaf=0 isempty=0 print=0
+  local jpath="${1:+$1$SEPARATOR}$2" isleaf=0 isempty=0 print=0
   case "$token" in
     '{') parse_object "$jpath" ;;
     '[') parse_array  "$jpath" ;;
@@ -250,7 +256,7 @@ parse_value () {
   [ "$LEAFONLY" -eq 0 ] && [ "$PRUNE" -eq 1 ] && [ "$isempty" -eq 0 ] && print=1
   [ "$LEAFONLY" -eq 1 ] && [ "$isleaf" -eq 1 ] && \
     [ "$PRUNE" -eq 1 ] && [ "$isempty" -eq 0 ] && print=1
-  [ "$print" -eq 1 ] && printf "[%s]\t%s\n" "$jpath" "$value"
+  [ "$print" -eq 1 ] && printf "[%s]$SPACER%s\n" "$jpath" "$value"
   :
 }
 
