@@ -21,6 +21,8 @@ is_bash() {
 }
 fi
 
+# Broken lint warning, shellchek things we're trying to use flags with echo
+# shellcheck disable=2039
 usage() {
   echo
   echo "Usage: JSON.sh [-b] [-l] [-p] [-s] [-h]"
@@ -106,12 +108,16 @@ tokenize () {
   local SPACE='[[:space:]]+'
 
   # Force zsh to expand $A into multiple words
+  # We don't care about return value.
+  # shellcheck disable=2155
   local is_wordsplit_disabled=$(unsetopt 2>/dev/null | grep -c '^shwordsplit$')
   if [ "$is_wordsplit_disabled" != 0 ]; then setopt shwordsplit; fi
   $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
   if [ "$is_wordsplit_disabled" != 0 ]; then unsetopt shwordsplit; fi
 }
 
+# We know we're running in bash, and nothing below causes syntax errors in zsh or dash
+# shellcheck disable=2039
 if is_bash; then
   read -r -d '' <<'EOF'
 set +o posix
@@ -226,6 +232,8 @@ parse_value () {
     *) value=$token
        # if asked, replace solidus ("\/") in json strings with normalized value: "/"
        if is_bash; then
+		   # Bashisms allowed, we're running under bash
+		   # shellcheck disable=2039
          [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value="${value//\\\///}"
        else
          [ "$NORMALIZE_SOLIDUS" -eq 1 ] && value=$(echo "$value" | sed 's#\\/#/#g')
